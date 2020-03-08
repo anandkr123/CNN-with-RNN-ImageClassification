@@ -1,3 +1,4 @@
+# Image classification
 from PIL import Image
 import os
 import numpy as np
@@ -19,6 +20,7 @@ num_hidden_1 = 196   # 1st layer num features
 num_hidden_2 = 144 # 2nd layer num features (the latent dim)
 logits_layer = n_outputs
 
+# declare weights and biases
 weights = {
     'layer_w1': tf.Variable(tf.random_normal([num_input, num_hidden_1])),
     'layer_w2': tf.Variable(tf.random_normal([num_hidden_1, num_hidden_2])),
@@ -45,7 +47,7 @@ def conv2d(input_tensor, depth, kernel, strides, padding="SAME"):
     return tf.layers.conv2d(input_tensor, filters=depth, kernel_size=kernel, strides=strides, padding=padding,
                             activation=tf.nn.relu)
 
-
+# convolutional and fully connected layers for training of the CNN model
 def total_conv_net(x):
     net = conv2d(x, 32, 2, strides=(2, 2)) # (128-2)/2  + 1 = 64
     net = conv2d(net, 48, 3, strides=(2, 2)) # (64-3)/2 + 1 = 31.5
@@ -60,8 +62,8 @@ def fully_connected(x):
                                    biases['layer_b2']))
     return layer_2
 
-# preparing data for LSTM input in single pass
-
+# preparing data for RNN input in single pass
+# piled convolutional and FC layers with trained weights for passing data to RNN input for further training
 def data_lstm(x, batch):
     net = conv2d(x, 32, 2, strides=(2, 2))  # (128-2)/2  + 1 = 64
     net = conv2d(net, 48, 3, strides=(2, 2))  # (64-3)/2 + 1 = 31.5
@@ -73,7 +75,7 @@ def data_lstm(x, batch):
     lstm_layer = tf.reshape(layer_2, [batch, 12, 12])      # lstm with 12 steps and 12 features per step
     return lstm_layer
 
-
+# passing the images
 convolution_net = total_conv_net(X)
 
 trim_channel = tf.unstack(convolution_net, axis=3)
@@ -108,13 +110,14 @@ l = 0  # for sequential labels indexing
 images = np.zeros((15*21, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), dtype=np.uint8)
 val_images = np.zeros((15*21, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), dtype=np.uint8)
 
-images_test = np.zeros((9, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), dtype=np.uint8)   # test images for LSTM model
+images_test = np.zeros((9, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), dtype=np.uint8)   # test images for RNN model
 
 image_labels = np.ndarray(shape=(21 * 15,), dtype=int)
-labels_test = np.ndarray(shape=(9,), dtype=int)                                     # test labels for LSTM model
+labels_test = np.ndarray(shape=(9,), dtype=int)                                     # test labels for RNN model
 
 init = tf.global_variables_initializer()
 
+# pre-processing the training and validation images 
 with tf.Session() as sess:
     sess.run(init)
     for i in range(count_same_image):
@@ -190,6 +193,7 @@ for i in range(n_outputs):
         for j in range(21):
             encode[j + i*21][i] = 1
 
+# iterating over the batches of the images
 def next_batch(batch_s, iters):
     count = batch_s * iters
     return images[count-batch_s:count], encode[count-batch_s: count]
@@ -199,7 +203,7 @@ def val_next_batch(batch_s, iters):
     return val_images[count-batch_s:count], encode[count-batch_s: count]
 
 # reset_graph()
-
+# training over CNN Model to get trained weights
 for i in range(3*75):
     # training on a batch of 105 images
     if (batch_count > 3):
@@ -233,7 +237,7 @@ for i in range(15):
     for j in range(21):
         encoded[j + i*21] = i
 #
-batch = tf.placeholder("float", None)                           # batch size only for LSTM
+batch = tf.placeholder("float", None)                           # batch size only for RNN
 lstm_op = data_lstm(X, batch)
 
 init = tf.global_variables_initializer()
@@ -241,10 +245,15 @@ sess = tf.Session()
 sess.run(init)
 
 lstm_total_images = np.concatenate((images, val_images))
+
+# passing trained weights from CNN model to RNN model 
 x_total = sess.run(lstm_op, feed_dict={X: lstm_total_images[:630], batch: 630})
 
+# separting the training and validation images
 x_train, x_val = x_total[:315], x_total[315:]
 y_train, y_val = encoded[:315], encoded[:315]
+
+# preparing the cnn represtantion of images
 x_test = sess.run(lstm_op, feed_dict={X: images_test[:], batch: 9})
 
 def lstm_next_batch(batch_s, iters):
@@ -282,10 +291,9 @@ prediction = tf.nn.in_top_k(logits1, Y, 1)                  # CHECK ONCE
 accuracy = tf.reduce_mean(tf.cast(prediction, tf.float32))
 
 # initialize the variables
-#
 init = tf.global_variables_initializer()
-#
-# train the model
+
+# train the RNN model which has inputs as learned weights from the CNN model
 sess = tf.Session()
 sess.run(init)
 loss_list = []
@@ -332,6 +340,7 @@ for epoch in range(n_epochs):
 
 n_predict = 5   # number to display prediction
 
+# predicting using the model and count the correct predictions made
 for i in range(n_predict):
     pred = sess.run(tf.argmax(logits1[i]), feed_dict={x: x_test, Y: labels_test})
     actual = labels_test[i]-1
