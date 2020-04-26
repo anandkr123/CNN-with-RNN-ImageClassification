@@ -1,9 +1,10 @@
 # CNN-with-RNN-ImageClassification
 
 
-1. COIL-100 dataset Challenge is a Kaggle Challenge. Image are rotated from 0-360 degress. 7,200
-   images of 100 objects-72 poses per object. Image(128*128) is divided into 128 horizontal pixel rows
+1. COIL-100 dataset Challenge is a Kaggle Challenge. Image are rotated from 0-360 degress. 2,160
+   images of 30 objects-72 poses per object. Image(128*128) is divided into 128 horizontal pixel rows
    that serves as input at continuous 128 time-stamps to a RNN network.
+2. Later, the RNN cell is unrolled in time for prediction of every object.
 
 LOSS, ACCURACY on training and validation set and predictions on test set 
 
