@@ -6,7 +6,7 @@
    that serves as input at continuous 128 time-stamps to a RNN network.
 2. Later, the RNN cell is unrolled in time for prediction of every object.
 
-                           LOSS, ACCURACY on TRAINING and VALIDATION SET and PEDICTIONS on TEST SET
+                       LOSS, ACCURACY on TRAINING and VALIDATION SET and PEDICTIONS on TEST SET
 
 ACCURACY ON TRAINING SET is AROUND 50% while ACCURACY ON VALIDATION SET is 40%
 
