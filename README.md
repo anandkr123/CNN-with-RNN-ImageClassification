@@ -8,7 +8,8 @@
 LOSS, ACCURACY on training and validation set and predictions on test set 
 
 ACCURACY ON TRAINING SET is AROUND 50% while ACCURACY ON VALIDATION SET is 40%
-![val-loss_train-loss](https://user-images.githubusercontent.com/23450113/80319900-5e88c800-8813-11ea-9b53-0733c0b6e23f.png)
+![loss_train_val-acc_train_val-predictions](https://user-images.githubusercontent.com/23450113/80320095-a825e280-8814-11ea-9708-0d4e0453c2b0.png)
+
 
 Training loss and Validation loss
 
