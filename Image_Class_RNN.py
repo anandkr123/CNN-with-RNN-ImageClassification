@@ -136,9 +136,17 @@ n_inputs = 128
 x = tf.placeholder(tf.float32, [None, n_steps, n_inputs])
 Y = tf.placeholder(tf.int32, [None])
 
-# make one basic RNN cell that will be unrolled in time
-cell = tf.nn.rnn_cell.BasicRNNCell(num_units=n_neurons)
-output, state = tf.nn.dynamic_rnn(cell, x, dtype=tf.float32)
+# Either use the simple one layer RNN architecture 
+
+# simple_rnn = tf.keras.layers.SimpleRNN(units=n_neurons)
+# output, final_state = simple_rnn(x, return_sequences=True, return_state=True)
+
+# Or Create a generic level RNN with RNN cell and appending it to the layers(just used a single layer)
+
+cell = tf.keras.layers.SimpleRNNCell(num_units=n_neurons)
+rnn = tf.keras.layers.RNN(cell, return_sequences=True, return_state=True) #(layers RNN could be used to stacking multiple rnn cell in layers)
+output, final_state = rnn(x)
+
 logits1 = tf.layers.dense(state, n_outputs)
 cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=Y, logits=logits1)
 loss = tf.reduce_mean(cross_entropy)
