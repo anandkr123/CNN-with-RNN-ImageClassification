@@ -10,7 +10,8 @@ from skimage.transform import resize
 IMG_WIDTH = 128
 IMG_HEIGHT = 128
 IMG_CHANNELS = 1
-
+TRAIN_IMAGES = 30*67          # 67 (rotated images) OBJECTS OF 30 CLASSES
+VALIDATION_IMAGES = 30*5      # 5  (rotated images) OBJECTS OF 30 CLASSES
 
 
 def reset_graph(seed = 2018):
@@ -20,8 +21,8 @@ def reset_graph(seed = 2018):
 
 
 # declaring array images for training, validation and testing
-images = np.zeros((30*67, IMG_HEIGHT, IMG_WIDTH), dtype=np.uint8)
-val_images = np.zeros((30*5, IMG_HEIGHT, IMG_WIDTH), dtype=np.uint8)
+images = np.zeros((TRAIN_IMAGES, IMG_HEIGHT, IMG_WIDTH), dtype=np.uint8)
+val_images = np.zeros((VALIDATION_IMAGES, IMG_HEIGHT, IMG_WIDTH), dtype=np.uint8)
 
 images_test = np.zeros((12, IMG_HEIGHT, IMG_WIDTH), dtype=np.uint8)   # test images for LSTM model
 
@@ -91,8 +92,8 @@ sess = tf.Session()
 sess.run(init)
 
 
-encoded_train = np.ndarray(shape=(30*67,), dtype=int)
-encoded_val = np.ndarray(shape=(30*5,), dtype=int)
+encoded_train = np.ndarray(shape=(TRAIN_IMAGES,), dtype=int)
+encoded_val = np.ndarray(shape=(VALIDATION_IMAGES,), dtype=int)
 
 # preparing the target labels for the training and validation set
 for i in range(30):
@@ -113,25 +114,40 @@ sess.run(init)
 x_train, x_val = images[:], val_images[:]
 y_train, y_val = encoded_train[:], encoded_val[:]
 
-# reading training images in batches from the array
-def lstm_next_batch(batch_s, iters):
-    count_total = batch_s * iters
-    return x_train[count_total-batch_s:count_total], y_train[count_total-batch_s: count_total]
-#
-# def val_lstm_next_batch(batch_s, iters):
+# # reading training images in batches from the array
+# def lstm_next_batch(batch_s, iters):
 #     count_total = batch_s * iters
-#     return x_val[count_total-batch_s:count_total], y_val[count_total-batch_s: count_total]
+#     return x_train[count_total-batch_s:count_total], y_train[count_total-batch_s: count_total]
 
-# Start making the Network for RNN
 # reset the graph and make sure the random numbers are always the same
 reset_graph()
 # hyperparameters
 n_neurons = 600
 learning_rate = 0.001
+learning_rate_decay = 0.001
 n_epochs = 152
 n_outputs = 30
 n_steps = 128
 n_inputs = 128
+
+
+def next_batch_X(batch_size):
+    """Generator to loop over the next batch of data set."""
+
+    for i in range(0, len(y_train)//batch_size + 1):
+        yield x_train[i*batch_size: (i+1)*batch_size]
+
+
+def next_batch_Y(batch_size):
+    for i in range(0, len(y_train)//batch_size + 1):
+        yield y_train[i*batch_size: (i+1)*batch_size]
+
+def decay_learning_rate(epoch_no):
+    """Slow the learning rate as we move closer to minimum."""
+
+    epoch_no = epoch_no // 10
+    alpha = 1 / (1 + (learning_rate_decay*epoch_no))
+    return alpha*learning_rate
 
 x = tf.placeholder(tf.float32, [None, n_steps, n_inputs])
 Y = tf.placeholder(tf.int32, [None])
@@ -143,7 +159,7 @@ Y = tf.placeholder(tf.int32, [None])
 
 # Or Create a generic level RNN with RNN cell and appending it to the layers(just used a single layer)
 
-cell = tf.keras.layers.SimpleRNNCell(num_units=n_neurons)
+cell = tf.keras.layers.SimpleRNNCell(units=n_neurons)
 rnn = tf.keras.layers.RNN(cell, return_sequences=True, return_state=True) #(layers RNN could be used to stacking multiple rnn cell in layers)
 output, final_state = rnn(x)
 
@@ -189,19 +205,23 @@ else:
 
 # start training the model
 for epoch in range(n_epochs):
-    for batch_size in range(5):
-        batch_x, batch_y = lstm_next_batch(402, batch_size+1)
+    
+    for batch_x, batch_y in zip(next_batch_X(batch_size), next_batch_Y(batch_size)):
         sess.run(optimizer, feed_dict={x: batch_x, Y: batch_y})
         loss_train, acc_train = sess.run(
             [loss, accuracy], feed_dict={x: batch_x, Y: batch_y})
-
+        
     batch_x_val, batch_y_val = x_val[:], y_val[:]
     loss_val, acc_val = sess.run( [loss, accuracy], feed_dict={x: batch_x_val, Y: batch_y_val})
     batch_size = 0
     train_list.append(loss_train)
     val_list.append(loss_val)
+    
+    if epoch % 10 == 0:
+        learning_rate = decay_learning_rate(epoch)
     if epoch % 50 == 0:
         saver.save(sess, './rnn-model', global_step=epoch, write_meta_graph=False)
+        
     print('Epoch: {}, Train Loss: {:.3f}, Train Acc: {:.3f}'.format(epoch + 1, loss_train, acc_train))
     print('VALIDATION Loss: {:.3f}, Test Acc: {:.3f}'.format(loss_val, acc_val))
 
