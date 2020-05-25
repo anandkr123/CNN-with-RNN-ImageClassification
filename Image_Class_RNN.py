@@ -160,10 +160,10 @@ Y = tf.placeholder(tf.int32, [None])
 # Or Create a generic level RNN with RNN cell and appending it to the layers(just used a single layer)
 
 cell = tf.keras.layers.SimpleRNNCell(units=n_neurons)
-rnn = tf.keras.layers.RNN(cell, return_sequences=False) #(layers RNN could be used to stacking multiple rnn cell in layers)
-output, final_state = rnn(x)
+rnn = tf.keras.layers.RNN(cell, return_sequences=False, return_state=False) #(layers RNN could be used to stacking multiple rnn cell in layers)
+output= rnn(x)
 
-logits1 = tf.layers.dense(final_state, n_outputs)
+logits1 = tf.layers.dense(output, n_outputs)
 cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=Y, logits=logits1)
 loss = tf.reduce_mean(cross_entropy)
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
