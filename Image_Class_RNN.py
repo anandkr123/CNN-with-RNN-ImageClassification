@@ -163,7 +163,7 @@ cell = tf.keras.layers.SimpleRNNCell(units=n_neurons)
 rnn = tf.keras.layers.RNN(cell, return_sequences=True, return_state=True) #(layers RNN could be used to stacking multiple rnn cell in layers)
 output, final_state = rnn(x)
 
-logits1 = tf.layers.dense(state, n_outputs)
+logits1 = tf.layers.dense(final_state, n_outputs)
 cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=Y, logits=logits1)
 loss = tf.reduce_mean(cross_entropy)
 optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
